@@ -1,4 +1,6 @@
 // compile-flags: -O -C no-prepopulate-passes
+//
+// min-system-llvm-version: 12.0
 
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]

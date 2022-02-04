@@ -1445,7 +1445,7 @@ impl Builder<'a, 'll, 'tcx> {
         match self.tcx.sess.target.arch.as_str() {
             // FIXME - https://bugs.llvm.org/show_bug.cgi?id=50083
             "riscv64" => llvm_util::get_version() < (13, 0, 0),
-            _ => false,
+            _ => llvm_util::get_version() < (10, 0, 0),
         }
     }
 }

@@ -1,3 +1,4 @@
+// min-llvm-version: 10.0.1
 // revisions: powerpc powerpc64 powerpc64le
 //[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
 //[powerpc] needs-llvm-components: powerpc

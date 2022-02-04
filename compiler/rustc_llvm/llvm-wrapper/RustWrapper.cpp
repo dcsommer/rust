@@ -249,8 +249,14 @@ extern "C" void LLVMRustAddAlignmentCallSiteAttr(LLVMValueRef Instr,
                                                  unsigned Index,
                                                  uint32_t Bytes) {
   CallBase *Call = unwrap<CallBase>(Instr);
-  Attribute Attr = Attribute::getWithAlignment(Call->getContext(), Align(Bytes));
+
+#if LLVM_VERSION_GE(10, 0)
+  Attribute Attr = Attribute::getWithAlignment(Call->getContext(), llvm::Align(Bytes));
+#else
+  Attribute Attr = Attribute::getWithAlignment(Call->getContext(), Bytes);
+#endif
   AddAttribute(Call, Index, Attr);
+
 }
 
 extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
@@ -279,7 +285,11 @@ extern "C" void LLVMRustAddByValCallSiteAttr(LLVMValueRef Instr, unsigned Index,
 extern "C" void LLVMRustAddStructRetCallSiteAttr(LLVMValueRef Instr, unsigned Index,
                                                  LLVMTypeRef Ty) {
   CallBase *Call = unwrap<CallBase>(Instr);
+#if LLVM_VERSION_GE(12, 0)
   Attribute Attr = Attribute::getWithStructRetType(Call->getContext(), unwrap(Ty));
+#else
+  Attribute Attr = Attribute::get(Call->getContext(), Attribute::StructRet);
+#endif
   AddAttribute(Call, Index, Attr);
 }
 
@@ -294,8 +304,14 @@ extern "C" void LLVMRustAddAlignmentAttr(LLVMValueRef Fn,
                                          unsigned Index,
                                          uint32_t Bytes) {
   Function *A = unwrap<Function>(Fn);
+#if LLVM_VERSION_GE(10, 0)
   AddAttribute(A, Index, Attribute::getWithAlignment(
       A->getContext(), llvm::Align(Bytes)));
+#else
+  AttrBuilder B;
+  B.addAlignmentAttr(Bytes);
+  A->addAttributes(Index, B);
+#endif
 }
 
 extern "C" void LLVMRustAddDereferenceableAttr(LLVMValueRef Fn, unsigned Index,
@@ -323,7 +339,11 @@ extern "C" void LLVMRustAddByValAttr(LLVMValueRef Fn, unsigned Index,
 extern "C" void LLVMRustAddStructRetAttr(LLVMValueRef Fn, unsigned Index,
                                          LLVMTypeRef Ty) {
   Function *F = unwrap<Function>(Fn);
+#if LLVM_VERSION_GE(12, 0)
   Attribute Attr = Attribute::getWithStructRetType(F->getContext(), unwrap(Ty));
+#else
+  Attribute Attr = Attribute::get(F->getContext(), Attribute::StructRet);
+#endif
   AddAttribute(F, Index, Attr);
 }
 
@@ -545,6 +565,11 @@ static DINode::DIFlags fromRust(LLVMRustDIFlags Flags) {
   if (isSet(Flags & LLVMRustDIFlags::FlagAppleBlock)) {
     Result |= DINode::DIFlags::FlagAppleBlock;
   }
+#if LLVM_VERSION_LT(10, 0)
+  if (isSet(Flags & LLVMRustDIFlags::FlagBlockByrefStruct)) {
+    Result |= DINode::DIFlags::FlagBlockByrefStruct;
+  }
+#endif
   if (isSet(Flags & LLVMRustDIFlags::FlagVirtual)) {
     Result |= DINode::DIFlags::FlagVirtual;
   }
@@ -689,8 +714,10 @@ static Optional<DIFile::ChecksumKind> fromRust(LLVMRustChecksumKind Kind) {
     return DIFile::ChecksumKind::CSK_MD5;
   case LLVMRustChecksumKind::SHA1:
     return DIFile::ChecksumKind::CSK_SHA1;
+#if (LLVM_VERSION_MAJOR >= 11)
   case LLVMRustChecksumKind::SHA256:
     return DIFile::ChecksumKind::CSK_SHA256;
+#endif
   default:
     report_fatal_error("bad ChecksumKind.");
   }
@@ -1005,9 +1032,14 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateUnionType(
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateTemplateTypeParameter(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
     const char *Name, size_t NameLen, LLVMMetadataRef Ty) {
+#if LLVM_VERSION_GE(11, 0)
   bool IsDefault = false; // FIXME: should we ever set this true?
   return wrap(Builder->createTemplateTypeParameter(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), unwrapDI<DIType>(Ty), IsDefault));
+#else
+  return wrap(Builder->createTemplateTypeParameter(
+      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), unwrapDI<DIType>(Ty)));
+#endif
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateNameSpace(
@@ -1032,11 +1064,17 @@ extern "C" LLVMMetadataRef
 LLVMRustDIBuilderCreateDebugLocation(unsigned Line, unsigned Column,
                                      LLVMMetadataRef ScopeRef,
                                      LLVMMetadataRef InlinedAt) {
+#if LLVM_VERSION_GE(12, 0)
   MDNode *Scope = unwrapDIPtr<MDNode>(ScopeRef);
   DILocation *Loc = DILocation::get(
       Scope->getContext(), Line, Column, Scope,
       unwrapDIPtr<MDNode>(InlinedAt));
   return wrap(Loc);
+#else
+  DebugLoc debug_loc = DebugLoc::get(Line, Column, unwrapDIPtr<MDNode>(ScopeRef),
+                                     unwrapDIPtr<MDNode>(InlinedAt));
+  return wrap(debug_loc.getAsMDNode());
+#endif
 }
 
 extern "C" int64_t LLVMRustDIBuilderCreateOpDeref() {
@@ -1241,18 +1279,27 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
     return LLVMArrayTypeKind;
   case Type::PointerTyID:
     return LLVMPointerTypeKind;
+#if LLVM_VERSION_GE(11, 0)
   case Type::FixedVectorTyID:
     return LLVMVectorTypeKind;
+#else
+  case Type::VectorTyID:
+    return LLVMVectorTypeKind;
+#endif
   case Type::X86_MMXTyID:
     return LLVMX86_MMXTypeKind;
   case Type::TokenTyID:
     return LLVMTokenTypeKind;
+#if LLVM_VERSION_GE(11, 0)
   case Type::ScalableVectorTyID:
     return LLVMScalableVectorTypeKind;
   case Type::BFloatTyID:
     return LLVMBFloatTypeKind;
+#endif
+#if LLVM_VERSION_GE(12, 0)
   case Type::X86_AMXTyID:
     return LLVMX86_AMXTypeKind;
+#endif
   }
   report_fatal_error("Unhandled TypeID.");
 }
@@ -1417,28 +1464,47 @@ extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B,
                                             LLVMValueRef Dst, unsigned DstAlign,
                                             LLVMValueRef Src, unsigned SrcAlign,
                                             LLVMValueRef Size, bool IsVolatile) {
+#if LLVM_VERSION_GE(10, 0)
   return wrap(unwrap(B)->CreateMemCpy(
       unwrap(Dst), MaybeAlign(DstAlign),
       unwrap(Src), MaybeAlign(SrcAlign),
       unwrap(Size), IsVolatile));
+#else
+  return wrap(unwrap(B)->CreateMemCpy(
+      unwrap(Dst), DstAlign,
+      unwrap(Src), SrcAlign,
+      unwrap(Size), IsVolatile));
+#endif
 }
 
 extern "C" LLVMValueRef LLVMRustBuildMemMove(LLVMBuilderRef B,
                                              LLVMValueRef Dst, unsigned DstAlign,
                                              LLVMValueRef Src, unsigned SrcAlign,
                                              LLVMValueRef Size, bool IsVolatile) {
+#if LLVM_VERSION_GE(10, 0)
   return wrap(unwrap(B)->CreateMemMove(
       unwrap(Dst), MaybeAlign(DstAlign),
       unwrap(Src), MaybeAlign(SrcAlign),
       unwrap(Size), IsVolatile));
+#else
+  return wrap(unwrap(B)->CreateMemMove(
+      unwrap(Dst), DstAlign,
+      unwrap(Src), SrcAlign,
+      unwrap(Size), IsVolatile));
+#endif
 }
 
 extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B,
                                             LLVMValueRef Dst, unsigned DstAlign,
                                             LLVMValueRef Val,
                                             LLVMValueRef Size, bool IsVolatile) {
+#if LLVM_VERSION_GE(10, 0)
   return wrap(unwrap(B)->CreateMemSet(
       unwrap(Dst), unwrap(Val), unwrap(Size), MaybeAlign(DstAlign), IsVolatile));
+#else
+  return wrap(unwrap(B)->CreateMemSet(
+      unwrap(Dst), unwrap(Val), unwrap(Size), DstAlign, IsVolatile));
+#endif
 }
 
 extern "C" LLVMValueRef
@@ -1638,7 +1704,11 @@ struct LLVMRustModuleBuffer {
 
 extern "C" LLVMRustModuleBuffer*
 LLVMRustModuleBufferCreate(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(10, 0)
   auto Ret = std::make_unique<LLVMRustModuleBuffer>();
+#else
+  auto Ret = llvm::make_unique<LLVMRustModuleBuffer>();
+#endif
   {
     raw_string_ostream OS(Ret->data);
     {
@@ -1710,15 +1780,23 @@ LLVMRustBuildVectorReduceMax(LLVMBuilderRef B, LLVMValueRef Src, bool IsSigned) 
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFMin(LLVMBuilderRef B, LLVMValueRef Src, bool NoNaN) {
+#if LLVM_VERSION_GE(12, 0)
   Instruction *I = unwrap(B)->CreateFPMinReduce(unwrap(Src));
   I->setHasNoNaNs(NoNaN);
   return wrap(I);
+#else
+  return wrap(unwrap(B)->CreateFPMinReduce(unwrap(Src), NoNaN));
+#endif
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFMax(LLVMBuilderRef B, LLVMValueRef Src, bool NoNaN) {
+#if LLVM_VERSION_GE(12, 0)
   Instruction *I = unwrap(B)->CreateFPMaxReduce(unwrap(Src));
   I->setHasNoNaNs(NoNaN);
   return wrap(I);
+#else
+  return wrap(unwrap(B)->CreateFPMaxReduce(unwrap(Src), NoNaN));
+#endif
 }
 
 extern "C" LLVMValueRef
@@ -1751,19 +1829,9 @@ extern "C" LLVMRustResult LLVMRustWriteImportLibrary(
   ConvertedExports.reserve(NumExports);
 
   for (size_t i = 0; i < NumExports; ++i) {
-    bool ordinal_present = Exports[i].ordinal_present;
-    uint16_t ordinal = ordinal_present ? Exports[i].ordinal : 0;
-    ConvertedExports.push_back(llvm::object::COFFShortExport{
-      Exports[i].name,  // Name
-      std::string{},    // ExtName
-      std::string{},    // SymbolName
-      std::string{},    // AliasTarget
-      ordinal,          // Ordinal
-      ordinal_present,  // Noname
-      false,            // Data
-      false,            // Private
-      false             // Constant
-    });
+    llvm::object::COFFShortExport ConvertedExport;
+    ConvertedExport.Name = Exports[i].name;
+    ConvertedExports.push_back(std::move(ConvertedExport));
   }
 
   auto Error = llvm::object::writeImportLibrary(

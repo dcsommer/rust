@@ -1,5 +1,6 @@
 //
 // compile-flags: -C no-prepopulate-passes
+// min-llvm-version 8.0
 
 #![crate_type = "lib"]
 

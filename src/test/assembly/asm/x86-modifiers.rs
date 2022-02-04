@@ -1,3 +1,4 @@
+// min-llvm-version: 10.0.1
 // revisions: x86_64 i686
 // assembly-output: emit-asm
 // compile-flags: -O

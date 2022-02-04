@@ -1,3 +1,4 @@
+// min-llvm-version: 10.0.1
 // only-x86_64
 // build-fail
 // compile-flags: -Ccodegen-units=1

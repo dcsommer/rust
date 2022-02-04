@@ -1,3 +1,4 @@
+// min-llvm-version: 10.0.1
 // only-aarch64
 // run-pass
 // revisions: mirunsafeck thirunsafeck

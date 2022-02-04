@@ -134,6 +134,11 @@ pub unsafe fn create_module(
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
     let mut target_data_layout = sess.target.data_layout.clone();
+    if llvm_util::get_version() < (10, 0, 0)
+        && (sess.target.arch == "x86" || sess.target.arch == "x86_64")
+    {
+        target_data_layout = target_data_layout.replace("-p270:32:32-p271:32:32-p272:64:64-", "-");
+    }
     if llvm_util::get_version() < (13, 0, 0) {
         if sess.target.arch == "powerpc64" {
             target_data_layout = target_data_layout.replace("-S128", "");
