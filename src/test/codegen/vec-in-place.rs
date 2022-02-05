@@ -1,5 +1,6 @@
 // ignore-debug: the debug assertions get in the way
 // compile-flags: -O
+// min-llvm-version: 11.0
 #![crate_type = "lib"]
 
 // Ensure that trivial casts of vec elements are O(1)

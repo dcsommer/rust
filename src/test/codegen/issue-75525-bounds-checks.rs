@@ -1,5 +1,6 @@
 // Regression test for #75525, verifies that no bounds checks are generated.
 
+// min-llvm-version: 12.0.0
 // compile-flags: -O
 
 #![crate_type = "lib"]

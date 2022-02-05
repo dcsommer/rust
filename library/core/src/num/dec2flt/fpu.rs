@@ -39,7 +39,8 @@ mod fpu_precision {
             asm!(
                 "fldcw word ptr [{}]",
                 in(reg) &cw,
-                options(nostack),
+                // FIXME: We are using ATT syntax to support LLVM 8 and LLVM 9.
+                options(att_syntax, nostack),
             )
         }
     }
@@ -63,7 +64,8 @@ mod fpu_precision {
             asm!(
                 "fnstcw word ptr [{}]",
                 in(reg) &mut cw,
-                options(nostack),
+                // FIXME: We are using ATT syntax to support LLVM 8 and LLVM 9.
+                options(att_syntax, nostack),
             )
         }
 

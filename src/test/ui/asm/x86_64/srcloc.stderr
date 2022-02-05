@@ -251,7 +251,7 @@ LL |     invalid_instruction1
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction2'
-  --> $DIR/srcloc.rs:109:13
+  --> $DIR/srcloc.rs:110:13
    |
 LL |             concat!(
    |             ^
@@ -263,7 +263,7 @@ LL | invalid_instruction2
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction3'
-  --> $DIR/srcloc.rs:113:13
+  --> $DIR/srcloc.rs:114:13
    |
 LL |             concat!(
    |             ^
@@ -275,7 +275,7 @@ LL | invalid_instruction3
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction4'
-  --> $DIR/srcloc.rs:113:13
+  --> $DIR/srcloc.rs:114:13
    |
 LL |             concat!(
    |             ^
@@ -287,3 +287,4 @@ LL | invalid_instruction4
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 23 previous errors; 1 warning emitted
+
